@@ -1,0 +1,15 @@
+﻿fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+asyncpg
+alembic
+redis
+httpx
+python-dotenv
+pydantic
+pydantic-settings
+reportlab
+slowapi
+pytest
+pytest-asyncio

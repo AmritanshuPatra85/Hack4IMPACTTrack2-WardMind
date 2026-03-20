@@ -15,6 +15,8 @@ from app.services.mock_data import get_mock_ward_by_id, get_mock_wards
 
 router = APIRouter()
 
+LAYER_OPTIONS = {"epi", "solar", "outage", "income"}
+
 
 def _orm_to_dict(obj) -> dict:
     return {col.name: getattr(obj, col.name) for col in obj.__table__.columns}
@@ -44,38 +46,64 @@ def _filter_and_sort(wards: List[dict], q: Optional[str], layer: Optional[str]) 
     return filtered
 
 
-def _mock_shap(ward_id: int) -> dict:
-    ward = get_mock_ward_by_id(ward_id)
+def _verdict(epi_score: float) -> str:
+    if epi_score >= 0.75:
+        return "critical"
+    if epi_score >= 0.35:
+        return "moderate"
+    return "good"
+
+
+def _build_shap_from_ward(ward: dict) -> dict:
+    epi_score = float(ward.get("epi_score", 0))
+    outage = float(ward.get("outage_hours", 0))
+    burden = float(ward.get("burden_pct", 0))
+    solar = float(ward.get("solar_ghi", 0))
+    reliability = round(1 - epi_score, 3)
+
     features = [
         {
             "name": "outage_hours",
-            "value": ward["outage_hours"],
-            "impact": round(ward["outage_hours"] / 10, 3),
-        },
-        {
-            "name": "income_decile",
-            "value": ward["income_decile"],
-            "impact": round((10 - ward["income_decile"]) / 12, 3),
-        },
-        {
-            "name": "solar_ghi",
-            "value": ward["solar_ghi"],
-            "impact": round(ward["solar_ghi"] / 10, 3),
+            "value": outage,
+            "impact": round(epi_score * 0.45, 3),
         },
         {
             "name": "burden_pct",
-            "value": ward["burden_pct"],
-            "impact": round(ward["burden_pct"] / 20, 3),
+            "value": burden,
+            "impact": round(epi_score * 0.35, 3),
+        },
+        {
+            "name": "solar_ghi",
+            "value": solar,
+            "impact": round(-(1 - epi_score) * 0.15, 3),
+        },
+        {
+            "name": "reliability",
+            "value": reliability,
+            "impact": round(-(1 - epi_score) * 0.10, 3),
         },
     ]
-    base_value = 0.5
-    prediction = round(base_value + sum(f["impact"] for f in features) / 4.5, 3)
+
+    verdict = _verdict(epi_score)
+    explanation = (
+        f"{ward.get('name', 'This ward')} has outage hours of {outage}, "
+        f"energy burden {burden}%, and solar GHI {solar}. "
+        f"Based on an EPI score of {epi_score}, the ward is rated as {verdict}."
+    )
+
     return {
-        "ward_id": ward_id,
-        "base_value": base_value,
-        "prediction": min(prediction, 0.99),
+        "ward_id": int(ward.get("id", 0)),
+        "base_value": 0.5,
+        "prediction": round(epi_score, 3),
+        "verdict": verdict,
+        "explanation": explanation,
         "features": features,
     }
+
+
+def _mock_shap(ward_id: int) -> dict:
+    ward = get_mock_ward_by_id(ward_id)
+    return _build_shap_from_ward(ward)
 
 
 def _mock_telemetry(ward_id: int) -> dict:
@@ -134,17 +162,14 @@ async def _set_cached_json(key: str, value: dict, ttl_seconds: int):
         return
 
 
-async def _fetch_shap(ward_id: int) -> dict:
+async def _fetch_shap(ward_id: int, ward: Optional[dict] = None) -> dict:
     cache_key = f"gridmind:shap:{ward_id}"
     cached = await _get_cached_json(cache_key)
     if cached:
         return cached
 
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{settings.ML_SERVICE_URL}/ml/shap/{ward_id}")
-            resp.raise_for_status()
-            data = resp.json()
+        data = _build_shap_from_ward(ward or get_mock_ward_by_id(ward_id))
     except Exception:
         data = _mock_shap(ward_id)
 
@@ -207,7 +232,11 @@ async def list_wards(
     if not wards:
         wards = get_mock_wards()
 
+    active_layer = layer if layer in LAYER_OPTIONS else "epi"
     wards = _filter_and_sort(wards, q, layer)
+    for ward in wards:
+        ward["active_layer"] = active_layer
+
     return wards
 
 
@@ -229,8 +258,20 @@ async def get_ward(ward_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/wards/{ward_id}/shap", response_model=WardShapResponse)
-async def get_ward_shap(ward_id: int):
-    data = await _fetch_shap(ward_id)
+async def get_ward_shap(ward_id: int, db: Session = Depends(get_db)):
+    ward = None
+    try:
+        result = db.execute(select(Ward).where(Ward.id == ward_id))
+        ward_obj = result.scalars().first()
+        if ward_obj:
+            ward = _orm_to_dict(ward_obj)
+    except Exception:
+        ward = None
+
+    if not ward:
+        ward = get_mock_ward_by_id(ward_id)
+
+    data = await _fetch_shap(ward_id, ward)
     return data
 
 
@@ -244,4 +285,3 @@ async def get_ward_telemetry(ward_id: int):
 async def get_ward_forecast(ward_id: int):
     data = await _fetch_forecast(ward_id)
     return data
-

@@ -1,5 +1,4 @@
-﻿from pydantic_settings import BaseSettings
-
+﻿
 class Settings(BaseSettings):
     POSTGRES_URL: str = "sqlite:///./gridmind.db"
     REDIS_URL: str = "rediss://default:gQAAAAAAATMqAAIncDExMzc3OGY0YjAwMDk0NDBmOWZlMTk0YjNiMzhlMzU2ZXAxNzg2MzQ@able-rabbit-78634.upstash.io:6379"

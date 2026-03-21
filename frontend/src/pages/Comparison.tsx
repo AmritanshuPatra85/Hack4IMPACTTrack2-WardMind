@@ -8,14 +8,14 @@ const metrics = [
   { label: 'Grid Reliability %', key: 'reliability', higherIsBetter: true },
   { label: 'Grid Loss %', key: 'grid_loss', higherIsBetter: false },
   { label: 'Renewable %', key: 'renewable', higherIsBetter: true },
-  { label: 'Tariff \u20B9/unit', key: 'tariff', higherIsBetter: false },
+  { label: 'Tariff ₹/unit', key: 'tariff', higherIsBetter: false },
 ] as const
 
 function Comparison() {
   const [cities, setCities] = useState<City[]>([])
   const [interventions, setInterventions] = useState<Intervention[]>([])
-  const [cityA, setCityA] = useState('bbsr')
-  const [cityB, setCityB] = useState('pune')
+  const [cityA, setCityA] = useState('')
+  const [cityB, setCityB] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,17 +23,18 @@ function Comparison() {
 
     const loadData = async () => {
       setLoading(true)
-
       try {
         const [citiesData, interventionsData] = await Promise.all([
           fetchCities(),
           fetchInterventions(),
         ])
-
         if (!isMounted) return
-
         setCities(citiesData)
         setInterventions(interventionsData)
+        if (citiesData.length >= 2) {
+          setCityA(citiesData[0].name)
+          setCityB(citiesData[1].name)
+        }
       } finally {
         if (!isMounted) return
         setLoading(false)
@@ -41,28 +42,23 @@ function Comparison() {
     }
 
     void loadData()
-
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [])
 
-  const getCity = (id: string) => cities.find((c) => c.id === id)
+  const getCity = (name: string) => cities.find((c) => c.name === name)
 
   const selectedCityA = getCity(cityA)
   const selectedCityB = getCity(cityB)
 
   const getValueClass = (a: number, b: number, higherIsBetter: boolean, target: 'a' | 'b') => {
     if (a === b) return 'text-white'
-
     const aIsBetter = higherIsBetter ? a > b : a < b
     const isBetter = target === 'a' ? aIsBetter : !aIsBetter
-
     return isBetter ? 'text-emerald-400' : 'text-red-400'
   }
 
   const exportCsv = () => {
-    const header = ['Rank', 'Intervention', 'Wards', 'Households', 'Cost (\u20B9L)', 'HH/Lakh', 'Type']
+    const header = ['Rank', 'Intervention', 'Wards', 'Households', 'Cost (₹L)', 'HH/Lakh', 'Type']
     const rows = interventions.map((item) => [
       item.rank,
       item.name,
@@ -72,11 +68,9 @@ function Comparison() {
       item.hh_per_lakh,
       item.type,
     ])
-
     const csv = [header, ...rows]
       .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
       .join('\n')
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -104,8 +98,8 @@ function Comparison() {
               className="w-full rounded-lg border border-gray-700 bg-[#1a2235] p-3 text-white"
             >
               {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
+                <option key={city.name} value={city.name}>
+                  {city.name}, {city.state}
                 </option>
               ))}
             </select>
@@ -116,8 +110,8 @@ function Comparison() {
               className="w-full rounded-lg border border-gray-700 bg-[#1a2235] p-3 text-white"
             >
               {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
+                <option key={city.name} value={city.name}>
+                  {city.name}, {city.state}
                 </option>
               ))}
             </select>
@@ -138,13 +132,19 @@ function Comparison() {
             : metrics.map((metric) => {
                 const valueA = selectedCityA?.[metric.key] ?? 0
                 const valueB = selectedCityB?.[metric.key] ?? 0
-
                 return (
                   <div key={metric.label} className="rounded-xl bg-[#1a2235] p-4">
-                    <p className="mb-2 text-sm text-gray-400">{metric.label}</p>
-                    <div className="flex items-center justify-between gap-4 text-lg font-semibold">
-                      <span className={getValueClass(valueA, valueB, metric.higherIsBetter, 'a')}>{valueA}</span>
-                      <span className={getValueClass(valueA, valueB, metric.higherIsBetter, 'b')}>{valueB}</span>
+                    <p className="mb-3 text-sm text-gray-400">{metric.label}</p>
+                    <div className="flex items-center justify-between text-lg font-semibold">
+                      <div className="text-center">
+                        <p className={getValueClass(valueA, valueB, metric.higherIsBetter, 'a')}>{valueA}</p>
+                        <p className="text-xs text-gray-500 mt-1">{cityA}</p>
+                      </div>
+                      <span className="text-gray-600">vs</span>
+                      <div className="text-center">
+                        <p className={getValueClass(valueA, valueB, metric.higherIsBetter, 'b')}>{valueB}</p>
+                        <p className="text-xs text-gray-500 mt-1">{cityB}</p>
+                      </div>
                     </div>
                   </div>
                 )
@@ -158,7 +158,8 @@ function Comparison() {
           <button
             type="button"
             onClick={exportCsv}
-            className="rounded-lg border border-green-500/30 bg-green-500/20 px-4 py-2 text-sm text-green-400"
+            style={{ display: 'none' }}
+            className="rounded-lg border border-green-500/30 bg-green-500/20 px-4 py-2 text-sm text-green-400 hover:bg-green-500/30 transition-all"
           >
             Export CSV
           </button>
@@ -179,7 +180,7 @@ function Comparison() {
                   <th className="px-4 py-3">Intervention</th>
                   <th className="px-4 py-3">Wards</th>
                   <th className="px-4 py-3">Households</th>
-                  <th className="px-4 py-3">Cost ({'\u20B9L'})</th>
+                  <th className="px-4 py-3">Cost (₹L)</th>
                   <th className="px-4 py-3">HH/Lakh</th>
                   <th className="px-4 py-3">Type</th>
                 </tr>
@@ -194,15 +195,13 @@ function Comparison() {
                     <td className="px-4 py-3 text-gray-300">{item.cost_lakh}</td>
                     <td className="px-4 py-3 font-bold text-green-400">{item.hh_per_lakh}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          item.type === 'quick'
-                            ? 'bg-emerald-500/15 text-emerald-300'
-                            : item.type === 'infra'
-                              ? 'bg-amber-500/15 text-amber-300'
-                              : 'bg-blue-500/15 text-blue-300'
-                        }`}
-                      >
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        item.type === 'quick'
+                          ? 'bg-emerald-500/15 text-emerald-300'
+                          : item.type === 'infra'
+                            ? 'bg-amber-500/15 text-amber-300'
+                            : 'bg-blue-500/15 text-blue-300'
+                      }`}>
                         {item.type}
                       </span>
                     </td>

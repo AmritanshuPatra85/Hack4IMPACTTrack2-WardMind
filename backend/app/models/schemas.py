@@ -17,6 +17,7 @@ class WardResponse(BaseModel):
     lat: float
     lng: float
     created_at: Optional[datetime] = None
+    active_layer: Optional[str] = None
 
 
 class ShapFeature(BaseModel):
@@ -29,6 +30,8 @@ class WardShapResponse(BaseModel):
     ward_id: int
     base_value: float
     prediction: float
+    verdict: str
+    explanation: str
     features: List[ShapFeature]
 
 

@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "ward_id": 1, "name": "Nayapalli" }, "geometry": { "type": "Polygon", "coordinates": [[[85.815,20.290],[85.825,20.290],[85.825,20.300],[85.815,20.300],[85.815,20.290]]] } },
+    { "type": "Feature", "properties": { "ward_id": 2, "name": "Aiginia" }, "geometry": { "type": "Polygon", "coordinates": [[[85.803,20.273],[85.813,20.273],[85.813,20.283],[85.803,20.283],[85.803,20.273]]] } },
+    { "type": "Feature", "properties": { "ward_id": 3, "name": "Khandagiri" }, "geometry": { "type": "Polygon", "coordinates": [[[85.771,20.258],[85.781,20.258],[85.781,20.268],[85.771,20.268],[85.771,20.258]]] } },
+    { "type": "Feature", "properties": { "ward_id": 4, "name": "Patrapada" }, "geometry": { "type": "Polygon", "coordinates": [[[85.792,20.227],[85.802,20.227],[85.802,20.237],[85.792,20.237],[85.792,20.227]]] } },
+    { "type": "Feature", "properties": { "ward_id": 5, "name": "Mancheswar" }, "geometry": { "type": "Polygon", "coordinates": [[[85.837,20.294],[85.847,20.294],[85.847,20.304],[85.837,20.304],[85.837,20.294]]] } },
+    { "type": "Feature", "properties": { "ward_id": 6, "name": "Rasulgarh" }, "geometry": { "type": "Polygon", "coordinates": [[[85.825,20.282],[85.835,20.282],[85.835,20.292],[85.825,20.292],[85.825,20.282]]] } },
+    { "type": "Feature", "properties": { "ward_id": 7, "name": "Baramunda" }, "geometry": { "type": "Polygon", "coordinates": [[[85.798,20.265],[85.808,20.265],[85.808,20.275],[85.798,20.275],[85.798,20.265]]] } },
+    { "type": "Feature", "properties": { "ward_id": 8, "name": "Sailashree Vihar" }, "geometry": { "type": "Polygon", "coordinates": [[[85.850,20.307],[85.860,20.307],[85.860,20.317],[85.850,20.317],[85.850,20.307]]] } },
+    { "type": "Feature", "properties": { "ward_id": 9, "name": "Dumduma" }, "geometry": { "type": "Polygon", "coordinates": [[[85.862,20.316],[85.872,20.316],[85.872,20.326],[85.862,20.326],[85.862,20.316]]] } },
+    { "type": "Feature", "properties": { "ward_id": 10, "name": "Pokhariput" }, "geometry": { "type": "Polygon", "coordinates": [[[85.783,20.244],[85.793,20.244],[85.793,20.254],[85.783,20.254],[85.783,20.244]]] } }
+  ]
+}

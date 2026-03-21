@@ -1,8 +1,9 @@
-import csv
+﻿import csv
 import io
 from typing import List
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -41,35 +42,41 @@ async def list_interventions(db: Session = Depends(get_db)):
 async def export_interventions(db: Session = Depends(get_db)):
     interventions = []
     try:
-        result = db.execute(select(Intervention))
+        result = db.execute(select(Intervention).order_by(Intervention.rank))
         interventions = [_orm_to_dict(row) for row in result.scalars().all()]
     except Exception:
         interventions = []
 
     if not interventions:
-        interventions = INTERVENTION_SEED
-
-    interventions = _sorted_interventions(interventions)
+        interventions = sorted(INTERVENTION_SEED, key=lambda x: x.get("rank", 0))
 
     output = io.StringIO()
-    writer = csv.DictWriter(
-        output,
-        fieldnames=[
-            "rank",
-            "name",
-            "wards_covered",
-            "households",
-            "cost_lakh",
-            "hh_per_lakh",
-            "type",
-            "description",
-        ],
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "Rank",
+            "Intervention",
+            "Wards Covered",
+            "Households",
+            "Cost (Lakh Rs)",
+            "HH per Lakh",
+            "Type",
+        ]
     )
-    writer.writeheader()
+
     for item in interventions:
-        writer.writerow({k: item.get(k) for k in writer.fieldnames})
+        writer.writerow(
+            [
+                item.get("rank"),
+                item.get("name"),
+                item.get("wards_covered"),
+                item.get("households"),
+                item.get("cost_lakh"),
+                item.get("hh_per_lakh"),
+                item.get("type"),
+            ]
+        )
 
-    csv_data = output.getvalue()
+    output.seek(0)
     headers = {"Content-Disposition": "attachment; filename=interventions.csv"}
-    return Response(content=csv_data, media_type="text/csv", headers=headers)
-
+    return StreamingResponse(output, media_type="text/csv", headers=headers)
